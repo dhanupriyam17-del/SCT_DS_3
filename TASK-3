@@ -1,0 +1,53 @@
+from google.colab import files
+uploaded = files.upload()
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score, classification_report
+
+import io
+
+# Load the Excel file, assuming it's a single sheet with semicolon-separated values in the first column.
+# Read without a header initially, and read all content as strings to avoid type inference issues.
+temp_df = pd.read_excel('Bank Marketing.xlsx', header=None, dtype=str)
+
+# Assuming all relevant data is in the first column of the Excel sheet.
+# Concatenate the content of the first column into a single string,
+# with each row separated by a newline character.
+excel_data_string = temp_df.iloc[:, 0].str.cat(sep='\n')
+
+# Use io.StringIO to treat this string as a file, then parse it with pd.read_csv
+df = pd.read_csv(io.StringIO(excel_data_string), sep=';')
+
+# Clean up column names by removing any surrounding double quotes, if present.
+df.columns = df.columns.str.strip('""')
+
+# Also, clean up any double quotes from string data within the DataFrame.
+# Iterate over columns of object type (likely strings).
+for col in df.select_dtypes(include=['object']).columns:
+    df[col] = df[col].str.strip('""')
+
+df.head()
+df.columns
+df.isnull().sum()
+df.dropna(inplace=True)
+label_encoder = LabelEncoder()
+
+for column in df.select_dtypes(include=['object']).columns:
+    df[column] = label_encoder.fit_transform(df[column])
+X = df.drop('y', axis=1)
+y = df['y']
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+model = DecisionTreeClassifier(criterion='gini', max_depth=5, random_state=42)
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+plt.figure(figsize=(20,10))
+plot_tree(model, feature_names=X.columns, class_names=['No', 'Yes'], filled=True)
+plt.show()
